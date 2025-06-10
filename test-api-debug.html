@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurator API Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response-section {
+            margin-top: 20px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .success {
+            color: #28a745;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .comparison > div {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .comparison h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Configurator API Debug Test</h1>
+        
+        <div class="info">
+            <strong>Note:</strong> This test page helps debug the mismatch between what the Shopify template expects and what the API returns.
+        </div>
+
+        <div class="input-group">
+            <label for="apiUrl">API Base URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:3000/api/shopify/product-config/" placeholder="Enter your API base URL">
+        </div>
+        
+        <div class="input-group">
+            <label for="productId">Shopify Product ID:</label>
+            <input type="text" id="productId" placeholder="Enter Shopify Product ID (e.g., 7890123456789)">
+        </div>
+        
+        <button onclick="testApi()">Test API Endpoint</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        async function testApi() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const productId = document.getElementById('productId').value;
+            const resultsDiv = document.getElementById('results');
+            
+            if (!productId) {
+                alert('Please enter a Product ID');
+                return;
+            }
+            
+            const fullUrl = apiUrl + productId;
+            
+            resultsDiv.innerHTML = '<div class="container"><h2>Testing API...</h2></div>';
+            
+            try {
+                // Make the API call
+                const response = await fetch(fullUrl);
+                const data = await response.json();
+                
+                // Display results
+                let html = '<div class="container">';
+                html += '<h2>API Response</h2>';
+                html += `<p><strong>URL:</strong> ${fullUrl}</p>`;
+                html += `<p><strong>Status:</strong> <span class="${response.ok ? 'success' : 'error'}">${response.status} ${response.statusText}</span></p>`;
+                html += '<h3>Raw Response:</h3>';
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                // Show what Shopify expects vs what we got
+                html += '<div class="comparison">';
+                html += '<div>';
+                html += '<h3>What Shopify Template Expects:</h3>';
+                html += '<pre>' + JSON.stringify({
+                    configured: true,
+                    options: [
+                        {
+                            id: "option-id",
+                            name: "Option Name",
+                            type: "single|multiple",
+                            required: true,
+                            values: [
+                                {
+                                    id: "value-id",
+                                    name: "Value Name",
+                                    price: 0,
+                                    selected: false
+                                }
+                            ]
+                        }
+                    ]
+                }, null, 2) + '</pre>';
+                html += '</div>';
+                
+                html += '<div>';
+                html += '<h3>What API Actually Returns:</h3>';
+                html += '<pre>' + JSON.stringify({
+                    success: data.success,
+                    data: data.data ? {
+                        id: data.data.id,
+                        shopify_product_id: data.data.shopify_product_id,
+                        configuration_data: data.data.configuration_data,
+                        // ... other fields
+                    } : null
+                }, null, 2) + '</pre>';
+                html += '</div>';
+                html += '</div>';
+                
+                // Show transformed data
+                if (data.success && data.data) {
+                    html += '<h3>Transformed Data (What we need to send to Shopify):</h3>';
+                    const transformed = transformApiResponse(data);
+                    html += `<pre>${JSON.stringify(transformed, null, 2)}</pre>`;
+                    
+                    // Show how to fix the API
+                    html += '<h3>Suggested API Fix:</h3>';
+                    html += '<div class="info">';
+                    html += '<p>The API endpoint needs to transform the response before sending it to match Shopify\'s expectations.</p>';
+                    html += '<p>In the GET method of route.ts, change the return statement from:</p>';
+                    html += '<pre>return NextResponse.json({\n  success: true,\n  data: data || null\n});</pre>';
+                    html += '<p>To something like:</p>';
+                    html += '<pre>// Transform the data to match Shopify\'s expected format\nconst transformedResponse = data ? {\n  configured: true,\n  options: data.configuration_data?.options || []\n} : {\n  configured: false,\n  options: []\n};\n\nreturn NextResponse.json(transformedResponse);</pre>';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="container">
+                        <h2 class="error">Error</h2>
+                        <p><strong>URL:</strong> ${fullUrl}</p>
+                        <p class="error">${error.message}</p>
+                        <h3>Possible Issues:</h3>
+                        <ul>
+                            <li>Make sure the Next.js app is running (npm run dev)</li>
+                            <li>Check if the API URL is correct</li>
+                            <li>Verify CORS settings if testing from a different domain</li>
+                            <li>Check the browser console for more details</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+        
+        function transformApiResponse(apiResponse) {
+            if (!apiResponse.success || !apiResponse.data) {
+                return {
+                    configured: false,
+                    options: []
+                };
+            }
+            
+            // Extract options from configuration_data
+            const configData = apiResponse.data.configuration_data;
+            
+            return {
+                configured: true,
+                options: configData?.options || []
+            };
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Add Enter key support
+        document.getElementById('productId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testApi();
+            }
+        });
+    </script>
+</body>
+</html>

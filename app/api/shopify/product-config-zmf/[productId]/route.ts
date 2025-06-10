@@ -30,7 +30,7 @@ export async function GET(
     }
 
     // Transform the response to match template expectations
-    const transformedResponse = {
+    const transformedResponse: any = {
       configured: true,
       basePrice: data.base_price || 0,
       options: []
