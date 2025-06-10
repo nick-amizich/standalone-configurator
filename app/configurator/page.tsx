@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 interface ProductConfig {
   shopify_product_id: string
@@ -30,7 +29,7 @@ export default function ConfiguratorPage() {
     }
   })
 
-  const supabase = createClient()
+
 
   useEffect(() => {
     fetchConfigs()
@@ -38,13 +37,15 @@ export default function ConfiguratorPage() {
 
   const fetchConfigs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('product_configurations')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setConfigs(data || [])
+      const response = await fetch('/api/admin/configurations')
+      if (!response.ok) throw new Error('Failed to fetch configurations')
+      
+      const result = await response.json()
+      if (result.success) {
+        setConfigs(result.data || [])
+      } else {
+        throw new Error(result.error || 'Failed to fetch configurations')
+      }
     } catch (error) {
       console.error('Error fetching configs:', error)
     } finally {
@@ -54,24 +55,33 @@ export default function ConfiguratorPage() {
 
   const saveConfig = async () => {
     try {
-      const { error } = await supabase
-        .from('product_configurations')
-        .upsert({
-          shopify_product_id: formData.shopify_product_id,
+      const response = await fetch(`/api/shopify/product-config/${formData.shopify_product_id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           configuration_data: formData.configuration_data,
-          active: true
-        }, {
-          onConflict: 'shopify_product_id'
+          name: `Config for ${formData.shopify_product_id}`,
+          base_price: 0,
+          base_sku: formData.shopify_product_id,
+          description: 'Product configuration'
         })
-
-      if (error) throw error
-
-      alert('Configuration saved!')
-      setFormData({
-        shopify_product_id: '',
-        configuration_data: { options: [] }
       })
-      fetchConfigs()
+
+      if (!response.ok) throw new Error('Failed to save configuration')
+      
+      const result = await response.json()
+      if (result.success) {
+        alert('Configuration saved!')
+        setFormData({
+          shopify_product_id: '',
+          configuration_data: { options: [] }
+        })
+        fetchConfigs()
+      } else {
+        throw new Error(result.error || 'Failed to save configuration')
+      }
     } catch (error) {
       console.error('Error saving config:', error)
       alert('Error saving configuration')
@@ -82,13 +92,18 @@ export default function ConfiguratorPage() {
     if (!confirm('Delete this configuration?')) return
 
     try {
-      const { error } = await supabase
-        .from('product_configurations')
-        .delete()
-        .eq('shopify_product_id', id)
+      const response = await fetch(`/api/shopify/product-config/${id}`, {
+        method: 'DELETE'
+      })
 
-      if (error) throw error
-      fetchConfigs()
+      if (!response.ok) throw new Error('Failed to delete configuration')
+      
+      const result = await response.json()
+      if (result.success) {
+        fetchConfigs()
+      } else {
+        throw new Error(result.error || 'Failed to delete configuration')
+      }
     } catch (error) {
       console.error('Error deleting config:', error)
     }
