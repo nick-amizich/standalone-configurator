@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - Shopify Configurator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        input {
+            padding: 5px;
+            margin: 5px;
+            width: 300px;
+        }
+        button {
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shopify Configurator API Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <label>API URL: <input type="text" id="apiUrl" value="https://standalone-configurator.vercel.app"></label><br>
+        <label>Product ID: <input type="text" id="productId" placeholder="Enter Shopify Product ID"></label><br>
+        <small>Note: You can also test locally with http://localhost:3000</small>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Test Original API Endpoint</h2>
+        <button onclick="testOriginalAPI()">Test /api/shopify/product-config/{productId}</button>
+        <div id="originalResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test ZMF Adapter Endpoint</h2>
+        <button onclick="testZMFAdapter()">Test /api/shopify/product-config-zmf/{productId}</button>
+        <div id="zmfResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. What the Shopify Template Expects</h2>
+        <pre>{
+  "configured": true,
+  "basePrice": 5000,
+  "options": [
+    {
+      "id": "material",
+      "name": "Material",
+      "type": "property",
+      "required": true,
+      "displayOrder": 1,
+      "values": [
+        {
+          "id": "walnut",
+          "name": "Walnut",
+          "available": true,
+          "priceModifier": 0
+        }
+      ]
+    }
+  ]
+}</pre>
+    </div>
+
+    <script>
+        async function testOriginalAPI() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const productId = document.getElementById('productId').value;
+            const resultDiv = document.getElementById('originalResult');
+            
+            if (!productId) {
+                resultDiv.innerHTML = '<p class="error">Please enter a Product ID</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/shopify/product-config/${productId}`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Response Status: ${response.status} ${response.ok ? '✓' : '✗'}</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    ${data.success && data.data ? '<p class="success">✓ Configuration found</p>' : '<p class="error">✗ No configuration found</p>'}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testZMFAdapter() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const productId = document.getElementById('productId').value;
+            const resultDiv = document.getElementById('zmfResult');
+            
+            if (!productId) {
+                resultDiv.innerHTML = '<p class="error">Please enter a Product ID</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/shopify/product-config-zmf/${productId}`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Response Status: ${response.status} ${response.ok ? '✓' : '✗'}</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    ${data.configured ? '<p class="success">✓ Configuration ready for template</p>' : '<p class="error">✗ Not configured</p>'}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Check for product ID in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const productIdParam = urlParams.get('productId');
+        if (productIdParam) {
+            document.getElementById('productId').value = productIdParam;
+        }
+    </script>
+</body>
+</html>
