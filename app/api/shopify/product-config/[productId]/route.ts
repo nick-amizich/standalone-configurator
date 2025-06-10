@@ -24,7 +24,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('product_configurations')
       .select('*')
-      .eq('product_id', productId)
+      .eq('shopify_product_id', productId)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -76,8 +76,7 @@ export async function POST(
     const { data: existing } = await supabaseAdmin
       .from('product_configurations')
       .select('id')
-      .eq('product_id', productId)
-      .eq('variant_id', body.variant_id || null)
+      .eq('shopify_product_id', productId)
       .single();
 
     let result;
@@ -101,9 +100,13 @@ export async function POST(
       const { data, error } = await supabaseAdmin
         .from('product_configurations')
         .insert({
-          product_id: productId,
-          variant_id: body.variant_id || null,
-          configuration_data: body.configuration_data
+          shopify_product_id: productId,
+          configuration_data: body.configuration_data,
+          name: body.name || 'Untitled Configuration',
+          base_price: body.base_price || 0,
+          base_sku: body.base_sku || '',
+          description: body.description || '',
+          active: true
         })
         .select()
         .single();
@@ -138,14 +141,11 @@ export async function DELETE(
 ) {
   try {
     const { productId } = params;
-    const { searchParams } = new URL(request.url);
-    const variantId = searchParams.get('variant_id');
 
     const { error } = await supabaseAdmin
       .from('product_configurations')
       .delete()
-      .eq('product_id', productId)
-      .eq('variant_id', variantId || null);
+      .eq('shopify_product_id', productId);
 
     if (error) throw error;
 

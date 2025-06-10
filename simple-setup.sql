@@ -34,7 +34,7 @@ CREATE POLICY "Authenticated users can manage configurations"
 -- Sample configuration to test with
 INSERT INTO product_configurations (shopify_product_id, configuration_data)
 VALUES (
-  'test-product-123',
+  '8190321328301',
   '{
     "name": "Verite Closed",
     "basePrice": 299900,

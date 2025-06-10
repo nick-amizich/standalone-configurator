@@ -2,8 +2,12 @@
 
 export interface ProductConfiguration {
   id: string;
-  product_id: string;
-  variant_id?: string;
+  shopify_product_id: string;
+  name: string;
+  base_price: number;
+  base_sku: string;
+  description: string;
+  active: boolean;
   configuration_data: ConfigurationData;
   created_at: string;
   updated_at: string;
@@ -23,8 +27,11 @@ export interface ConfigurationData {
 }
 
 export interface ProductConfigurationRequest {
-  product_id: string;
-  variant_id?: string;
+  shopify_product_id?: string;
+  name?: string;
+  base_price?: number;
+  base_sku?: string;
+  description?: string;
   configuration_data: ConfigurationData;
 }
 
