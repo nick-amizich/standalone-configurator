@@ -1,0 +1,581 @@
+<div class="product-template__container page-width"
+  id="ProductSection-{{ section.id }}"
+  data-section-id="{{ section.id }}"
+  data-section-type="product"
+  data-enable-history-state="true"
+  data-ajax-enabled="{{ settings.enable_ajax }}"
+>
+  {% comment %}
+    Get first variant, or deep linked one
+  {% endcomment %}
+  {%- assign current_variant = product.selected_or_first_available_variant -%}
+  {%- assign product_image_zoom_size = '1024x1024' -%}
+  {%- assign product_image_scale = '2' -%}
+  {%- assign enable_image_zoom = section.settings.enable_image_zoom -%}
+  {%- assign compare_at_price = current_variant.compare_at_price -%}
+  {%- assign price = current_variant.price -%}
+
+  {% case section.settings.media_size %}
+    {% when 'small' %}
+      {%- assign product_media_width = 'medium-up--one-third' -%}
+      {%- assign product_description_width = 'medium-up--two-thirds' -%}
+      {%- assign height = 345 -%}
+    {% when 'medium' %}
+      {%- assign product_media_width = 'medium-up--one-half' -%}
+      {%- assign product_description_width = 'medium-up--one-half' -%}
+      {%- assign height = 530 -%}
+    {% when 'large' %}
+      {%- assign product_media_width = 'medium-up--two-thirds' -%}
+      {%- assign product_description_width = 'medium-up--one-third' -%}
+      {%- assign height = 720 -%}
+    {% when 'full' %}
+      {%- assign product_media_width = '' -%}
+      {%- assign product_description_width = '' -%}
+      {%- assign height = 1090 -%}
+      {%- assign enable_image_zoom = false -%}
+  {% endcase %}
+
+  <div class="grid product-single{% if section.settings.enable_payment_button %} product-single--{{ section.settings.media_size }}-media{% endif %}">
+    <div class="grid__item product-single__media-group {{ product_media_width }}{% if section.settings.media_size == 'full' %} product-single__media-group--full{% endif %}" data-product-single-media-group>
+      {%- assign featured_media = product.selected_or_first_available_variant.featured_media | default: product.featured_media -%}
+
+      {%- for media in product.media -%}
+        {% include 'media', media: media, featured_media: featured_media, height: height, enable_image_zoom: enable_image_zoom, image_zoom_size: product_image_zoom_size, image_scale: product_image_scale %}
+      {%- endfor -%}
+
+      <noscript>
+        {% capture product_image_size %}{{ height }}x{% endcapture %}
+        <img src="{{ featured_media | img_url: product_image_size, scale: product_image_scale }}" alt="{{ featured_media.alt }}" id="FeaturedMedia-{{ section.id }}" class="product-featured-media" style="max-width: {{ height }}px;">
+      </noscript>
+
+      {% assign first_3d_model = product.media | where: "media_type", "model" | first %}
+
+      {%- if first_3d_model -%}
+        <button
+          aria-label="{{ 'products.product.view_in_space_label' | t }}"
+          class="product-single__view-in-space"
+          data-shopify-xr
+          data-shopify-model3d-id="{{ first_3d_model.id }}"
+          data-shopify-title="{{ product.title | escape }}"
+          data-shopify-xr-hidden
+        >
+          {% include 'icon-3d-badge-full-color' %}<span class='product-single__view-in-space-text'>{{ 'products.product.view_in_space' | t }}</span>
+        </button>
+      {%- endif -%}
+
+
+      {% if product.media.size > 1 %}
+        {% if product.media.size > 4 %}
+          {%- assign enable_thumbnail_slides = true -%}
+        {% endif %}
+
+        <div data-thumbnail-slider>
+          <div class="thumbnails-wrapper{% if enable_thumbnail_slides == true %} slider-active{% endif %}" data-slider>
+            {% if enable_thumbnail_slides == true %}
+              <button type="button" class="btn btn--link medium-up--hide thumbnails-slider__btn thumbnails-slider__prev thumbnails-slider__prev--{{ section.id }}" data-slider-button>
+                {% include 'icon-chevron-left' %}
+                <span class="icon__fallback-text">{{ 'sections.slideshow.previous_slide' | t }}</span>
+              </button>
+            {% endif %}
+
+            <ul class="product-single__thumbnails product-single__thumbnails-{{ section.id }}" data-slider-container>
+              {% if enable_thumbnail_slides == true %}
+                <div class="product-single__thumbnails-slider-track" data-slider-track>
+              {% endif %}
+
+              {% for media in product.media %}
+                <li class="product-single__thumbnails-item product-single__thumbnails-item--{{ section.settings.media_size }} {% if enable_thumbnail_slides == true %} product-single__thumbnails-item-slide{% endif %} js"{% if enable_thumbnail_slides == true %} data-slider-slide-index="{{ forloop.index0 }}" data-slider-item{% endif %}>
+                  <a href="{{ media.preview_image | img_url: product_image_zoom_size, scale: product_image_scale }}"
+                    class="text-link product-single__thumbnail product-single__thumbnail--{{ section.id }}"
+                    data-thumbnail-id="{{ section.id }}-{{ media.id }}"
+                    {% if enable_thumbnail_slides == true %} data-slider-item-link{% endif %}
+                    {% if enable_image_zoom %}data-zoom="{{ media.preview_image | img_url: product_image_zoom_size, scale: product_image_scale }}"{% endif %}>
+
+                      {%- capture thumbnailAlt -%}
+                        {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
+                          {{ 'sections.featured_product.video_thumbnail_alt' | t: imageAlt: media.alt | escape }}
+                        {%- elsif media.media_type == 'model' -%}
+                          {{ 'sections.featured_product.model_thumbnail_alt' | t: imageAlt: media.alt | escape }}
+                        {%- else -%}
+                          {{ 'sections.featured_product.gallery_thumbnail_alt' | t: imageAlt: media.alt | escape }}
+                        {%- endif -%}
+                      {%- endcapture -%}
+
+                      <img class="product-single__thumbnail-image" src="{{ media.preview_image | img_url: '110x110', scale: 2 }}" alt="{{ thumbnailAlt }}">
+                      {%- if media.media_type == 'video' or media.media_type =='external_video' -%}
+                        <div class="product-single__thumbnail-badge">
+                          {% include 'icon-video-badge-full-color' %}
+                        </div>
+                      {%- endif -%}
+                      {%- if media.media_type == 'model' -%}
+                        <div class="product-single__thumbnail-badge">
+                          {% include 'icon-3d-badge-full-color' %}
+                        </div>
+                      {%- endif -%}
+                  </a>
+                </li>
+              {% endfor %}
+
+              {% if enable_thumbnail_slides == true %}
+                </div>
+              {% endif %}
+            </ul>
+            {% if enable_thumbnail_slides == true %}
+              <button type="button" class="btn btn--link medium-up--hide thumbnails-slider__btn thumbnails-slider__next thumbnails-slider__next--{{ section.id }}" data-slider-button data-slider-button-next>
+                {% include 'icon-chevron-right' %}
+                <span class="icon__fallback-text">{{ 'sections.slideshow.next_slide' | t }}</span>
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+      
+      <div class="product-single__description rte">
+          {{ product.description }}
+        </div>
+      
+    </div>
+
+    <div class="grid__item {{ product_description_width }}">
+      <div class="product-single__meta">
+
+        <h1 class="product-single__title">{{ product.title }}</h1>
+        <script>window.performance.mark('debut:product:title_visible');</script>
+
+          <div class="product__price">
+            {% include 'product-price', variant: current_variant, show_vendor: section.settings.show_vendor %}
+          </div>
+        <p class="affirm-as-low-as" data-page-type="product" data-amount="{{product.price}}"></p>
+
+          {%- if shop.taxes_included or shop.shipping_policy.body != blank -%}
+            <div class="product__policies rte" data-product-policies>
+              {%- if shop.taxes_included -%}
+                {{ 'products.product.include_taxes' | t }}
+              {%- endif -%}
+              {%- if shop.shipping_policy.body != blank -%}
+                {{ 'products.product.shipping_policy_html' | t: link: shop.shipping_policy.url }}
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+
+        <!-- Begin ZMF Product Configurator -->
+        <!-- Product Configurator Container -->
+        <div id="zmf-product-configurator" data-product-id="{{ product.id }}">
+          <!-- Loading state -->
+          <div class="zmf-loading">Loading configuration options...</div>
+        </div>
+        <!-- Hidden form that will be populated by JavaScript -->
+        <form action="/cart/add" method="post" id="zmf-add-to-cart-form" style="display: none;">
+          <input type="hidden" name="id" id="zmf-variant-id" value="{{ product.selected_or_first_available_variant.id }}">
+          <!-- Line item properties will be dynamically added here -->
+          <button type="submit" name="add" id="zmf-add-to-cart">Add to Cart</button>
+        </form>
+        <!-- Add to cart button (visible) -->
+        <button type="button" id="zmf-add-button" class="btn product-form__cart-submit" disabled>
+          Add to Cart - <span id="zmf-price">{{ product.price | money }}</span>
+        </button>
+        <script>
+        (function() {
+          // Configuration
+          const API_URL = 'https://standalone-configurator.vercel.app'; // Replace with your actual API URL
+          const productId = '{{ product.id }}';
+          const shopifyDomain = '{{ shop.permanent_domain }}';
+          
+          // State
+          let productConfig = null;
+          let selectedOptions = {};
+          let calculatedPrice = 0;
+          
+          // Fetch configuration from your API
+          async function fetchProductConfiguration() {
+            try {
+              const response = await fetch(`${API_URL}/api/shopify/product-config/${productId}`, {
+                headers: {
+                  'X-Shopify-Domain': shopifyDomain
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error('Failed to fetch configuration');
+              }
+              
+              productConfig = await response.json();
+              
+              if (productConfig.configured) {
+                renderConfigurator();
+              } else {
+                showStandardProduct();
+              }
+            } catch (error) {
+              console.error('Error loading product configuration:', error);
+              showStandardProduct();
+            }
+          }
+          
+          // Render the configurator UI
+          function renderConfigurator() {
+            const container = document.getElementById('zmf-product-configurator');
+            container.innerHTML = '';
+            
+            // Group options by type
+            const variantOptions = productConfig.options.filter(opt => opt.type === 'variant');
+            const propertyOptions = productConfig.options.filter(opt => opt.type === 'property');
+            
+            // Render variant options
+            if (variantOptions.length > 0) {
+              const variantSection = document.createElement('div');
+              variantSection.className = 'zmf-variant-options';
+              variantSection.innerHTML = '<h3>Product Options</h3>';
+              
+              variantOptions.forEach(option => {
+                variantSection.appendChild(renderOption(option));
+              });
+              
+              container.appendChild(variantSection);
+            }
+            
+            // Render property options
+            if (propertyOptions.length > 0) {
+              const propertySection = document.createElement('div');
+              propertySection.className = 'zmf-property-options';
+              propertySection.innerHTML = '<h3>Customization Options</h3>';
+              
+              propertyOptions.forEach(option => {
+                propertySection.appendChild(renderOption(option));
+              });
+              
+              container.appendChild(propertySection);
+            }
+            
+            // Initialize with default selections
+            initializeDefaults();
+            updatePrice();
+            document.getElementById('zmf-add-button').disabled = false;
+          }
+          
+          // Render a single option
+          function renderOption(option) {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'zmf-option';
+            
+            const label = document.createElement('label');
+            label.textContent = option.name + (option.required ? ' *' : '');
+            optionDiv.appendChild(label);
+            
+            // For small number of values, use radio buttons
+            if (option.values.length <= 5) {
+              option.values.forEach(value => {
+                const radioDiv = document.createElement('div');
+                radioDiv.className = 'zmf-radio-option';
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = `option_${option.id}`;
+                input.value = value.id;
+                input.id = `value_${value.id}`;
+                input.disabled = !value.available;
+                input.addEventListener('change', () => handleOptionChange(option, value));
+                
+                const radioLabel = document.createElement('label');
+                radioLabel.htmlFor = `value_${value.id}`;
+                radioLabel.textContent = value.name;
+                
+                if (value.priceModifier > 0) {
+                  radioLabel.textContent += ` (+$${(value.priceModifier / 100).toFixed(2)})`;
+                }
+                
+                if (!value.available) {
+                  radioLabel.textContent += ' (Out of Stock)';
+                }
+                
+                radioDiv.appendChild(input);
+                radioDiv.appendChild(radioLabel);
+                optionDiv.appendChild(radioDiv);
+              });
+            } else {
+              // For many values, use dropdown
+              const select = document.createElement('select');
+              select.name = `option_${option.id}`;
+              select.addEventListener('change', (e) => {
+                const value = option.values.find(v => v.id === e.target.value);
+                if (value) handleOptionChange(option, value);
+              });
+              
+              // Add empty option if not required
+              if (!option.required) {
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Select ' + option.name;
+                select.appendChild(emptyOption);
+              }
+              
+              option.values.forEach(value => {
+                const optionEl = document.createElement('option');
+                optionEl.value = value.id;
+                optionEl.textContent = value.name;
+                optionEl.disabled = !value.available;
+                
+                if (value.priceModifier > 0) {
+                  optionEl.textContent += ` (+$${(value.priceModifier / 100).toFixed(2)})`;
+                }
+                
+                if (!value.available) {
+                  optionEl.textContent += ' (Out of Stock)';
+                }
+                
+                select.appendChild(optionEl);
+              });
+              
+              optionDiv.appendChild(select);
+            }
+            
+            return optionDiv;
+          }
+          
+          // Handle option selection
+          function handleOptionChange(option, value) {
+            selectedOptions[option.id] = {
+              option: option,
+              value: value
+            };
+            
+            updateVariant();
+            updatePrice();
+          }
+          
+          // Initialize default selections
+          function initializeDefaults() {
+            productConfig.options.forEach(option => {
+              if (option.required && option.values.length > 0) {
+                const firstAvailable = option.values.find(v => v.available);
+                if (firstAvailable) {
+                  selectedOptions[option.id] = {
+                    option: option,
+                    value: firstAvailable
+                  };
+                }
+              }
+            });
+          }
+          
+          // Update the selected variant based on variant options
+          function updateVariant() {
+            // Get variant options in the correct order
+            const variantOptions = productConfig.options
+              .filter(opt => opt.type === 'variant')
+              .sort((a, b) => a.displayOrder - b.displayOrder);
+            
+            // Build variant title
+            const variantParts = variantOptions
+              .map(opt => selectedOptions[opt.id]?.value.name)
+              .filter(Boolean);
+            
+            if (variantParts.length === 0) return;
+            
+            // Find matching Shopify variant
+            const variantTitle = variantParts.join(' / ');
+            
+            // This assumes your variant titles match the option values
+            {% for variant in product.variants %}
+              if ('{{ variant.title | escape }}' === variantTitle) {
+                document.getElementById('zmf-variant-id').value = '{{ variant.id }}';
+              }
+            {% endfor %}
+          }
+          
+          // Update the displayed price
+          function updatePrice() {
+            let totalPrice = productConfig.basePrice;
+            
+            Object.values(selectedOptions).forEach(selection => {
+              totalPrice += selection.value.priceModifier;
+            });
+            
+            calculatedPrice = totalPrice;
+            document.getElementById('zmf-price').textContent = formatMoney(totalPrice);
+          }
+          
+          // Format money
+          function formatMoney(cents) {
+            return '$' + (cents / 100).toFixed(2);
+          }
+          
+          // Show standard product form if no configuration
+          function showStandardProduct() {
+            document.getElementById('zmf-product-configurator').style.display = 'none';
+            // Optionally, show your theme's standard product form here
+          }
+          
+          // Handle add to cart
+          document.getElementById('zmf-add-button').addEventListener('click', function() {
+            const form = document.getElementById('zmf-add-to-cart-form');
+            
+            // Clear existing properties
+            form.querySelectorAll('input[name^="properties"]').forEach(el => el.remove());
+            
+            // Add line item properties
+            Object.values(selectedOptions).forEach(selection => {
+              if (selection.option.type === 'property') {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `properties[${selection.option.name}]`;
+                input.value = selection.value.name;
+                form.appendChild(input);
+              }
+            });
+            
+            // Add price adjustment for backend processing
+            const priceAdjustment = calculatedPrice - productConfig.basePrice;
+            if (priceAdjustment > 0) {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = 'properties[_price_adjustment]';
+              input.value = (priceAdjustment / 100).toFixed(2);
+              form.appendChild(input);
+            }
+            
+            // Submit the form
+            form.submit();
+          });
+          
+          // Initialize on page load
+          fetchProductConfiguration();
+        })();
+        </script>
+        <style>
+        /* Basic styling - customize to match your theme */
+        #zmf-product-configurator {
+          margin: 20px 0;
+        }
+        .zmf-loading {
+          text-align: center;
+          padding: 20px;
+          color: #666;
+        }
+        .zmf-variant-options,
+        .zmf-property-options {
+          margin-bottom: 30px;
+        }
+        .zmf-option {
+          margin-bottom: 20px;
+        }
+        .zmf-option label {
+          display: block;
+          font-weight: bold;
+          margin-bottom: 10px;
+        }
+        .zmf-radio-option {
+          margin: 5px 0;
+        }
+        .zmf-radio-option input {
+          margin-right: 10px;
+        }
+        .zmf-option select {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+        #zmf-add-button {
+          width: 100%;
+          padding: 15px;
+          font-size: 16px;
+          font-weight: bold;
+        }
+        #zmf-add-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        </style>
+        <!-- End ZMF Product Configurator -->
+
+        {% if section.settings.show_share_buttons %}
+          {% include 'social-sharing', share_title: product.title, share_permalink: product.url, share_image: product.featured_media %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% unless product == empty %}
+  <script type="application/json" id="ProductJson-{{ section.id }}">
+    {{ product | json }}
+  </script>
+  <script type="application/json" id="ModelJson-{{ section.id }}">
+    {{ product.media | where: 'media_type', 'model' | json }}
+  </script>
+{% endunless %}
+
+{% schema %}
+{
+  "name": "Product pages",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_quantity_selector",
+      "label": "Show quantity selector",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "label": "Show vendor",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_payment_button",
+      "label": "Show dynamic checkout button",
+      "info": "Each customer will see their preferred payment method from those available on your store, such as PayPal or Apple Pay. [Learn more](https://help.shopify.com/manual/using-themes/change-the-layout/dynamic-checkout)",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_share_buttons",
+      "label": "Show social sharing buttons",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Media",
+      "info": "Learn more about [media types](https://help.shopify.com/manual/products/product-media)"
+    },
+    {
+      "type": "select",
+      "id": "media_size",
+      "label": "Size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "full",
+          "label": "Full-width"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_image_zoom",
+      "label": "Enable image zoom",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_video_looping",
+      "label": "Enable video looping",
+      "default": false
+    }
+  ]
+}
+{% endschema %}

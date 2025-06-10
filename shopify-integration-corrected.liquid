@@ -1,0 +1,188 @@
+<!-- Replace lines 161-490 in your product-template.liquid with this code -->
+
+<!-- Product Configurator Container -->
+<div id="product-configurator" data-product-id="{{ product.id }}" style="margin: 20px 0;">
+  <!-- Configuration will be loaded here -->
+</div>
+
+<!-- Add to Cart Form -->
+<form action="/cart/add" method="post" enctype="multipart/form-data" class="product-form">
+  <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+  
+  <!-- Configuration fields will be added here dynamically -->
+  <div id="configuration-fields"></div>
+  
+  <div class="product-form__buttons">
+    <button type="submit" name="add" class="btn product-form__cart-submit">
+      <span>Add to cart</span>
+    </button>
+  </div>
+</form>
+
+<script>
+(function() {
+  // Configuration
+  const API_URL = 'https://standalone-configurator.vercel.app';
+  const productId = '{{ product.id }}';
+  
+  // Initialize configurator
+  async function initConfigurator() {
+    const container = document.getElementById('product-configurator');
+    const fieldsContainer = document.getElementById('configuration-fields');
+    
+    try {
+      // Show loading state
+      container.innerHTML = '<p>Loading configuration options...</p>';
+      
+      // Fetch configuration from API
+      const response = await fetch(`${API_URL}/api/shopify/product-config/${productId}`);
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.configuration_data) {
+        // Configuration exists, show options
+        const config = result.data.configuration_data;
+        container.innerHTML = '<h3>Customize Your Product</h3>';
+        
+        // Create simple form fields based on configuration
+        // You can customize this based on your specific needs
+        if (config.material) {
+          addField('Material', 'material', ['Walnut', 'Oak', 'Cherry', 'Maple'], config.material);
+        }
+        
+        if (config.size) {
+          addField('Size', 'size', ['Small', 'Medium', 'Large'], config.size);
+        }
+        
+        if (config.color) {
+          addField('Color', 'color', ['Natural', 'Dark', 'Light'], config.color);
+        }
+        
+        // Add custom text field if needed
+        if (config.customText !== undefined) {
+          addTextField('Custom Text', 'customText', config.customText);
+        }
+        
+      } else {
+        // No configuration, show message or hide container
+        container.innerHTML = '<p>This product can be customized. Contact us for options.</p>';
+      }
+      
+    } catch (error) {
+      console.error('Error loading configuration:', error);
+      container.style.display = 'none';
+    }
+  }
+  
+  // Add a dropdown field
+  function addField(label, name, options, defaultValue) {
+    const container = document.getElementById('product-configurator');
+    const fieldsContainer = document.getElementById('configuration-fields');
+    
+    const fieldHTML = `
+      <div class="product-form__input" style="margin-bottom: 15px;">
+        <label for="config-${name}">${label}:</label>
+        <select name="properties[${label}]" id="config-${name}" class="product-form__input--select">
+          ${options.map(opt => `
+            <option value="${opt}" ${opt === defaultValue ? 'selected' : ''}>
+              ${opt}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', fieldHTML);
+    
+    // Also add as line item property
+    const hiddenInput = `<input type="hidden" name="properties[${label}]" value="${defaultValue || options[0]}">`;
+    fieldsContainer.insertAdjacentHTML('beforeend', hiddenInput);
+    
+    // Update hidden input when selection changes
+    document.getElementById(`config-${name}`).addEventListener('change', function() {
+      fieldsContainer.querySelector(`input[name="properties[${label}]"]`).value = this.value;
+    });
+  }
+  
+  // Add a text field
+  function addTextField(label, name, defaultValue) {
+    const container = document.getElementById('product-configurator');
+    const fieldsContainer = document.getElementById('configuration-fields');
+    
+    const fieldHTML = `
+      <div class="product-form__input" style="margin-bottom: 15px;">
+        <label for="config-${name}">${label}:</label>
+        <input type="text" name="properties[${label}]" id="config-${name}" 
+               value="${defaultValue || ''}" class="product-form__input--text">
+      </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', fieldHTML);
+  }
+  
+  // Save configuration when form is submitted
+  function setupFormHandler() {
+    const form = document.querySelector('.product-form');
+    if (!form) return;
+    
+    form.addEventListener('submit', async function(e) {
+      // Allow normal submission but also save to API
+      const formData = new FormData(form);
+      const configData = {};
+      
+      // Extract configuration from form
+      for (let [key, value] of formData.entries()) {
+        if (key.startsWith('properties[')) {
+          const propName = key.match(/properties\[(.*?)\]/)[1];
+          configData[propName.toLowerCase().replace(/\s+/g, '')] = value;
+        }
+      }
+      
+      // Save to API (don't wait for response to not block cart submission)
+      fetch(`${API_URL}/api/shopify/product-config/${productId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          configuration_data: configData
+        })
+      }).catch(err => console.error('Error saving configuration:', err));
+    });
+  }
+  
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    initConfigurator();
+    setupFormHandler();
+  });
+})();
+</script>
+
+<style>
+/* Basic styling - customize to match your theme */
+#product-configurator {
+  padding: 20px;
+  background: #f8f8f8;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+#product-configurator h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.product-form__input label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.product-form__input--select,
+.product-form__input--text {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+</style>
