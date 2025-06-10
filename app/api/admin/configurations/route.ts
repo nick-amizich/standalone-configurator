@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
-}
-
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
@@ -24,8 +14,7 @@ export async function GET() {
       {
         success: true,
         data: data || []
-      },
-      { headers: corsHeaders }
+      }
     );
   } catch (error) {
     console.error('Error fetching configurations:', error);
@@ -34,7 +23,7 @@ export async function GET() {
         success: false,
         error: 'Failed to fetch configurations'
       },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 } 

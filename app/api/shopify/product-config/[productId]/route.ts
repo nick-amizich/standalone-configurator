@@ -2,17 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { ProductConfiguration, ProductConfigurationRequest } from '@/types/product-config';
 
-// CORS headers for Shopify
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
-}
-
 // GET: Retrieve product configuration
 export async function GET(
   request: NextRequest,
@@ -37,8 +26,7 @@ export async function GET(
       {
         success: true,
         data: data || null
-      },
-      { headers: corsHeaders }
+      }
     );
   } catch (error) {
     console.error('Error fetching product configuration:', error);
@@ -47,7 +35,7 @@ export async function GET(
         success: false,
         error: 'Failed to fetch product configuration'
       },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
@@ -68,7 +56,7 @@ export async function POST(
           success: false,
           error: 'Configuration data is required'
         },
-        { status: 400, headers: corsHeaders }
+        { status: 400 }
       );
     }
 
@@ -119,8 +107,7 @@ export async function POST(
       {
         success: true,
         data: result
-      },
-      { headers: corsHeaders }
+      }
     );
   } catch (error) {
     console.error('Error saving product configuration:', error);
@@ -129,7 +116,7 @@ export async function POST(
         success: false,
         error: 'Failed to save product configuration'
       },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
@@ -153,8 +140,7 @@ export async function DELETE(
       {
         success: true,
         message: 'Configuration deleted successfully'
-      },
-      { headers: corsHeaders }
+      }
     );
   } catch (error) {
     console.error('Error deleting product configuration:', error);
@@ -163,7 +149,7 @@ export async function DELETE(
         success: false,
         error: 'Failed to delete product configuration'
       },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
